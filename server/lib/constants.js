@@ -1,3 +1,5 @@
+import os from 'os'
+
 const constants = {
   blockchainEvents: {
     REPLACE: 'blockchainReplaced',
@@ -10,7 +12,8 @@ const constants = {
   },
   initialPeers: process.env.PEERS ? process.env.PEERS.split(',') : [],
   p2p_port: process.env.P2P_PORT || 6001,
-  httpPort: process.argv[2] || process.env.PORT || 3001
+  httpPort: process.argv[2] || process.env.PORT || 3001,
+  hostname: os.hostname()
 }
 
 export default constants
