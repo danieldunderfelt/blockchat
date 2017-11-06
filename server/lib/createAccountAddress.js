@@ -1,6 +1,6 @@
-var crypto = require('crypto');
+import crypto from 'crypto';
 
-function createAddress(publicKey){
+export default function(publicKey) {
   let sha256 = crypto.createHash("sha256")
   sha256.update(publicKey)
   return sha256.digest('hex')

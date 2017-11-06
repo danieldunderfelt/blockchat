@@ -1,7 +1,7 @@
-const crypto = require('crypto')
-const { calculateHash } = require('./blockHash')
+import crypto from 'crypto';
+import { calculateHash } from './blockHash';
 
-module.exports = function(index, data, previousHash) {
+export default function(index, data, previousHash) {
     const timestamp = new Date().getTime() / 1000
     const hash = calculateHash(index, previousHash, timestamp, data)
 
@@ -12,4 +12,4 @@ module.exports = function(index, data, previousHash) {
         previousHash,
         hash
     }
-}
+};

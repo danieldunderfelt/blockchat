@@ -1,4 +1,4 @@
-module.exports = {
+const constants = {
   blockchainEvents: {
     REPLACE: 'blockchainReplaced',
     ADD: 'blockAdded'
@@ -12,3 +12,5 @@ module.exports = {
   p2p_port: process.env.P2P_PORT || 6001,
   httpPort: process.argv[2] || process.env.PORT || 3001
 }
+
+export default constants

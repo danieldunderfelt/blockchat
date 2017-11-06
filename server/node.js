@@ -1,14 +1,28 @@
-const transactionSchema = require('../lib/schema/transaction')
-const messageSchema = require('../lib/schema/message')
-const message = require('../lib/message')
-const { createNextBlock } = require('../lib/create')
+import message from './lib/message'
+import { createNextBlock } from './lib/create'
+import yup from 'yup'
 
-module.exports = function(blockchain) {
- 
+const transactionSchema = yup.object().shape({
+  from: yup.string().required(),
+  to: yup.string().required(),
+  amount: yup.number().required().positive()
+})
+
+const messageSchema = yup.object().shape({
+  from: yup.string().required(),
+  to: yup.string().required(),
+  body: yup.string().required()
+})
+
+function validate( schema, data ) {
+  return schema.validateSync(data, { strict: true, abortEarly: true })
+}
+
+export default function( blockchain ) {
   let transactions = []
 
-  function createTransaction(transaction) {
-    if(transactionSchema.validate(transaction)) {
+  function createTransaction( transaction ) {
+    if( validate(transactionSchema, transaction) ) {
       transactions.push(transaction)
       return transaction
     }
@@ -20,17 +34,17 @@ module.exports = function(blockchain) {
     transactions = []
   }
 
-  function createMessage(messageData) {
+  function createMessage( messageData ) {
     const blockMessage = message(messageData)
 
-    if(!blockMessage) {
+    if( !validate(messageSchema, blockMessage) ) {
       return false
     }
 
-    const previousBlock = blockchain.getLatestBlock();
+    const previousBlock = blockchain.getLatestBlock()
 
     createTransaction({
-      from: "network",
+      from: 'network',
       to: blockMessage.from,
       amount: 1
     })
@@ -41,7 +55,6 @@ module.exports = function(blockchain) {
     }
 
     clearTransactions()
-
     return createNextBlock(previousBlock, data)
   }
 

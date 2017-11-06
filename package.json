@@ -3,15 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "5to6-codemod": "^1.7.1",
     "babel-cli": "^6.26.0",
     "babel-preset-env": "^1.6.1",
     "body-parser": "^1.18.2",
+    "concurrently": "^3.5.0",
     "eccrypto": "^1.0.3",
     "express": "^4.16.2",
     "nodemon": "^1.12.1",
     "react": "^16.0.0",
     "react-dom": "^16.0.0",
     "react-scripts": "1.0.17",
+    "realm": "^2.0.3",
     "ws": "^3.3.0",
     "yup": "^0.23.0"
   },
@@ -22,6 +25,7 @@
     "eject": "react-scripts eject",
     "babel-node": "babel-node --presets='env'",
     "dev-server": "nodemon --exec yarn run babel-node -- server/server.js",
-    "start-server": "babel-node server/server.js"
+    "dev-nodes": "concurrently 'PORT=4001 P2P_PORT=6002 yarn run dev-server' 'PORT=4002 P2P_PORT=6003 yarn run dev-server' 'PORT=4003 P2P_PORT=6004 yarn run dev-server'",
+    "start-server": "PORT=3001 babel-node server/server.js"
   }
 }

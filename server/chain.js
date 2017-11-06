@@ -1,16 +1,18 @@
-const { createGenesisBlock } = require('../lib/create')
-const { validateChain, validateBlock } = require('../lib/validate')
-const { blockchainEvents: events } = require('../lib/constants')
-const EventEmitter = require('events')
+import { createGenesisBlock } from './lib/create'
+import { validateChain, validateBlock } from './lib/validate'
+import constants from './lib/constants'
+import EventEmitter from 'events'
 
-module.exports = function() {
-  let blockchain = [ createGenesisBlock() ]
+const { blockchainEvents } = constants
+
+export default function(initialChain = [ createGenesisBlock() ]) {
+  let blockchain = initialChain
   const emitter = new EventEmitter()
 
   function addBlock(block) {
     if(validateBlock(block, getLatestBlock())) {
       blockchain.push(block)
-      emitter.emit(events.ADD)
+      emitter.emit(blockchainEvents.ADD)
     }
   }
 
@@ -25,7 +27,7 @@ module.exports = function() {
   function replace(newChain) {
     if(validateChain(newChain) && newChain.length > blockchain.length) {
       blockchain = newChain
-      emitter.emit(events.REPLACE)
+      emitter.emit(blockchainEvents.REPLACE)
       console.log('Chain replaced.')
     } else {
       console.warn('New chain failed validation. Not replaced.')
