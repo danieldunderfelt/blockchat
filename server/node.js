@@ -51,11 +51,15 @@ export default function( blockchain ) {
 
     const data = {
       message: blockMessage,
-      transactions
+      transactions: transactions.slice()
     }
 
     clearTransactions()
-    return createNextBlock(previousBlock, data)
+
+    const newBlock = createNextBlock(previousBlock, data)
+    blockchain.addBlock(newBlock)
+
+    return newBlock
   }
 
   return {

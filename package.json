@@ -9,6 +9,7 @@
     "concurrently": "^3.5.0",
     "eccrypto": "^1.0.3",
     "express": "^4.16.2",
+    "lodash": "^4.17.4",
     "nodemon": "^1.12.1",
     "react": "^16.0.0",
     "react-dom": "^16.0.0",
@@ -25,6 +26,6 @@
     "babel-node": "babel-node --presets='env'",
     "dev-server": "nodemon --exec yarn run babel-node -- server/server.js",
     "dev-nodes": "concurrently 'PORT=4001 P2P_PORT=6002 yarn run dev-server' 'PORT=4002 P2P_PORT=6003 yarn run dev-server' 'PORT=4003 P2P_PORT=6004 yarn run dev-server'",
-    "start-server": "PORT=3001 babel-node server/server.js"
+    "start-server": "yarn run babel-node server/server.js"
   }
 }

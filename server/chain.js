@@ -2,96 +2,49 @@ import { createGenesisBlock } from './lib/create'
 import { validateChain, validateBlock } from './lib/validate'
 import constants from './lib/constants'
 import EventEmitter from 'events'
-import block from './lib/block'
-
-export const BlockSchema = {
-  name: 'Block',
-  primaryKey: 'hash',
-  properties: {
-    index: { type: 'int', indexed: true },
-    timestamp: 'date',
-    data: 'BlockData',
-    previousHash: { type: 'string', indexed: true },
-    hash: 'string'
-  }
-}
-
-export const DataSchema = {
-  name: 'BlockData',
-  properties: {
-    message: 'BlockMessage',
-    transactions: 'Transaction[]'
-  }
-}
-
-export const TransactionSchema = {
-  name: 'Transaction',
-  properties: {
-    from: 'string',
-    to: 'string',
-    amount: 'double'
-  }
-}
-
-export const MessageSchema = {
-  name: 'BlockMessage',
-  properties: {
-    from: 'string',
-    to: 'string',
-    body: 'string'
-  }
-}
 
 const { blockchainEvents } = constants
 
-export default function(realm) {
-  const blockchain = realm.objects('Block')
+export default function(database) {
+  const blockchain = database.get('Block')
   const emitter = new EventEmitter()
 
   if(blockchain.length === 0) {
-    try {
-      realm.write(() => {
-        realm.create('Block', createGenesisBlock())
-      })
-    } catch(e) {
-      console.error('Genesis block write failed.', e)
-    }
+    database
+      .add('Block', createGenesisBlock())
+      .then(() => emitter.emit(blockchainEvents.ADD))
+      .catch(e => console.error('Genesis block write failed.', e))
   }
 
   function addBlock(block) {
     if(validateBlock(block, getLatestBlock())) {
-      try {
-        realm.write(() => {
-          realm.create('Block', block)
-        })
-        emitter.emit(blockchainEvents.ADD)
-      } catch(e) {
-        console.error('Block add failed.', block)
-      }
+      database
+        .add('Block', block)
+        .then(() => emitter.emit(blockchainEvents.ADD))
+        .catch(e => console.error('Block add failed.', e))
     }
   }
 
   function getBlockchain() {
-    return Array.from(blockchain.sorted('index').values())
+    let chain = Array.from(blockchain.sorted('index'))
+    chain = chain.map(obj => database.normalizeObject(obj))
+    return chain
   }
 
   function getLatestBlock() {
-    return blockchain.sorted('index', true).slice(0, 1)[0]
+    const record = blockchain.sorted('index', true).slice(0, 1)[ 0 ]
+    return database.normalizeObject(record)
   }
 
   function replace(newChain) {
     if(validateChain(newChain) && newChain.length > blockchain.length) {
-      realm.write(() => {
-        // Replace chain
+      database.write(realm => {
         realm.delete(blockchain)
-
-        newChain.forEach(block => {
-          realm.create('Block', block)
-        })
-      })
-
-      emitter.emit(blockchainEvents.REPLACE)
-      console.log('Chain replaced.')
+        newChain.forEach(block => realm.create('Block', block))
+      }).then(() => {
+        emitter.emit(blockchainEvents.REPLACE)
+        console.log('Chain replaced.')
+      }).catch(e => console.error(`Blockchain replace failed.`, e))
     } else {
       console.warn('New chain failed validation. Not replaced.')
     }

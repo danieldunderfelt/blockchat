@@ -1,15 +1,14 @@
-import crypto from 'crypto';
-import { calculateHash } from './blockHash';
+import { calculateHash } from './blockHash'
 
-export default function(index, data, previousHash) {
-    const timestamp = new Date()
-    const hash = calculateHash(index, previousHash, timestamp, data)
+export default function( index, data, previousHash, timestamp = new Date().valueOf() ) {
+  let timeStr = timestamp instanceof Date ? timestamp.valueOf() : timestamp
+  const hash = calculateHash(index, previousHash, timeStr, data)
 
-    return {
-        index,
-        timestamp,
-        data,
-        previousHash,
-        hash
-    }
-};
+  return {
+    index,
+    timestamp: timeStr,
+    data,
+    previousHash,
+    hash
+  }
+}

@@ -22,16 +22,15 @@ export default function( blockchain, p2p, node ) {
 
   app.post('/message', ( req, res ) => {
     const newBlock = node.createMessage(req.body)
-    blockchain.addBlock(newBlock)
-    p2p.broadcast(p2p.responseLatestMsg())
     res.json(newBlock)
-    console.log('Message added to blockchain.')
+    console.log('Message added to blockchain.', newBlock)
   })
 
   app.post('/addPeer', ( req, res ) => {
     p2p.connectToPeers([ req.body.peer ])
-    res.send()
-    console.log('Connecting to peer ' + req.body.peer)
+
+    res.send(`Connecting to peer ${ req.body.peer }`)
+    console.log(`Connecting to peer ${ req.body.peer }`)
   })
 
   app.listen(port, () => console.log('Listening http on port: ' + port))

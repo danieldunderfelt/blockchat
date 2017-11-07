@@ -1,8 +1,6 @@
 import { calculateHashForBlock } from './blockHash'
 
 export function validateBlock( block, previousBlock = { index: 0, hash: '0' } ) {
-  console.log(block)
-
   if( previousBlock.index + 1 !== block.index ) {
     console.log('Blocks are not consecutive.', block, previousBlock)
     return false
@@ -11,6 +9,7 @@ export function validateBlock( block, previousBlock = { index: 0, hash: '0' } ) 
     return false
   } else if( calculateHashForBlock(block) !== block.hash ) {
     console.log('Calculated hash for block does not match.')
+    console.dir(block)
     return false
   }
   return true

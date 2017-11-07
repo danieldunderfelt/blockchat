@@ -1,9 +1,10 @@
 import WebSocket from 'ws'
 import constants from './lib/constants'
+import difference from 'lodash/difference'
 
 const { p2p_port, blockchainEvents, socketMessages } = constants
 
-export default function( blockchain ) {
+export default function( blockchain, database ) {
   const sockets = []
   const server  = new WebSocket.Server({ port: p2p_port })
   server.on('connection', ws => initConnection(ws))
@@ -89,10 +90,17 @@ export default function( blockchain ) {
   }
 
   function connectToPeers( peers = [] ) {
-    peers.forEach(peer => {
+    const newPeers = !Array.isArray(peers) ? [ peers ] : peers
+    const connectedPeers = sockets.map(s => s._socket.remoteAddress + ':' + s._socket.remotePort)
+    const unconnectedPeers = difference(newPeers, connectedPeers)
+
+    unconnectedPeers.forEach(peer => {
       const ws = new WebSocket(peer)
 
-      ws.on('open', () => initConnection(ws))
+      ws.on('open', () => {
+        initConnection(ws)
+        database.add('Node', { p2puri: peer })
+      })
       ws.on('error', () => {
         console.log('connection failed')
       })
