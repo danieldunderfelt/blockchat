@@ -1,86 +1,89 @@
-import Realm from 'realm'
-import {
-  BlockSchema,
-  DataSchema,
-  TransactionSchema,
-  MessageSchema,
-  NodeSchema
-} from './lib/dbSchema'
-
+import Datastore from 'nedb'
 import constants from './lib/constants'
 import _get from 'lodash/get'
-import reduce from 'lodash/reduce'
 
 const { hostname, httpPort } = constants
 
 function createDatabasePromise( action ) {
   return new Promise(( resolve, reject ) => {
-    try {
-      const result = action()
-      resolve(result)
-    } catch( e ) {
-      reject(e)
-    }
+    action((err, result) => {
+      if(err) {
+        reject(err)
+      } else {
+        resolve(result)
+      }
+    })
   })
 }
 
 export default function( onReady ) {
+  const db = new Datastore({ filename: `db/BlockChat_node_${ hostname }_${ httpPort }.db`, autoload: true })
+  db.ensureIndex({ fieldName: 'data.hash' })
 
-  Realm.open({
-    path: `realms/BlockChat_node_${ hostname }_${ httpPort }.realm`,
-    schema: [ NodeSchema, BlockSchema, DataSchema, TransactionSchema, MessageSchema ],
-    schemaVersion: 3,
-    deleteRealmIfMigrationNeeded: true // Maybe only in development?
-  }).then(realm => {
+  function setOption(key, value = true, remove = false) {
+    return createDatabasePromise(cb => {
+      // Use the appropriate modifiers for arrays or simple values
+      const modifier = Array.isArray(value) ? (remove ? '$pull' : '$addToSet') : (remove ? '$unset' : '$set')
+      // If there are many values, $each is needed to push (or pull) from the options array.
+      const useValue = Array.isArray(value) ? (value.length > 1) ? { $each: value } : value[0] : value
+      db.update({ _id: '_nodeOptions' }, { [ modifier ] : { [ key ]: useValue }}, { upsert: true }, cb)
+    })
+  }
 
-    function add( type, data ) {
-      return createDatabasePromise(() => {
-        return realm.write(() => {
-          realm.create(type, data)
-        })
+  function getOption(key) {
+    return createDatabasePromise(cb => {
+      db.findOne({ _id: '_nodeOptions' }, { [ key ]: 1, _id: 0 }, ( err, doc ) => cb(err, _get(doc, 'key')))
+    })
+  }
+
+  function add( type = 'Block', data = {} ) {
+    return createDatabasePromise(cb => {
+      let useData = { type, data }
+
+      if(Array.isArray(data)) {
+        useData = data.map(d => ({ type, data: d }))
+      }
+
+      db.insert(useData, cb)
+    })
+  }
+
+  function remove(value, key = 'type') {
+    return createDatabasePromise(cb => {
+      const useKey = key === 'type' ? key : `data.${ key }`
+      const useQuery = value === 'all' ? {} : { [ useKey ]: value }
+      db.remove(useQuery, { multi: true }, cb)
+    })
+  }
+
+  function get( value, key = 'type' ) {
+    return createDatabasePromise(cb => {
+      const useKey = key === 'type' ? key : `data.${ key }`
+      db.find({ [ useKey ]: value }, { data: 1, _id: 0 }, ( err, docs ) => {
+        cb(err, docs.map(doc => _get(doc, 'data', doc)))
       })
-    }
+    })
+  }
 
-    function remove( thingsToRemove ) {
-      return createDatabasePromise(() => {
-        return realm.write(() => {
-          realm.delete(thingsToRemove)
-        })
-      })
-    }
+  function getLatest( value, key = 'type') {
+    return createDatabasePromise(cb => {
+      const useKey = key === 'type' ? key : `data.${ key }`
+      db
+        .findOne({ [ useKey ]: value }, { data: 1, _id: 0 })
+        .sort({ 'data.index': -1 })
+        .exec(( err, doc ) => cb(err, _get(doc, 'data', doc)))
+    })
+  }
 
-    function get( type ) {
-      return realm.objects(type)
-    }
+  const dbInterface = {
+    add,
+    remove,
+    get,
+    getLatest,
+    setOption,
+    getOption,
+    db
+  }
 
-    function write( action ) {
-      return createDatabasePromise(() => realm.write(() => action(realm)))
-    }
-
-    function normalizeObject( obj ) {
-      return reduce(obj, ( plainObj, val, key ) => {
-        let newVal = val
-        const constructorName = _get(val, 'constructor.name', '')
-
-        if( constructorName === 'RealmObject' ) {
-          newVal = normalizeObject(val)
-        } else if( constructorName === 'List' ) {
-          newVal = Array.from(val).map(i => normalizeObject(i))
-        }
-
-        plainObj[ key ] = newVal
-        return plainObj
-      }, {})
-    }
-
-    const dbInterface = {
-      add,
-      remove,
-      get,
-      write,
-      normalizeObject
-    }
-
-    onReady(dbInterface)
-  })
+  onReady(dbInterface)
 }

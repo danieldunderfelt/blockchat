@@ -5,7 +5,7 @@
 
 # testing
 /coverage
-realms/*
+db
 
 # production
 /build

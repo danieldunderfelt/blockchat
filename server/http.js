@@ -8,7 +8,7 @@ export default function( blockchain, p2p, node ) {
   const app = express()
   app.use(bodyParser.json())
 
-  app.get('/blocks', ( req, res ) => res.json(blockchain.getBlockchain()))
+  app.get('/blocks', async ( req, res ) => res.json(await blockchain.getBlockchain()))
 
   app.get('/peers', ( req, res ) => {
     res.send(p2p.getPeers().map(s => s._socket.remoteAddress + ':' + s._socket.remotePort))
@@ -20,10 +20,10 @@ export default function( blockchain, p2p, node ) {
     console.log('Transaction added.')
   })
 
-  app.post('/message', ( req, res ) => {
-    const newBlock = node.createMessage(req.body)
+  app.post('/message', async ( req, res ) => {
+    const newBlock = await node.createMessage(req.body)
     res.json(newBlock)
-    console.log('Message added to blockchain.', newBlock)
+    console.log('Message added to blockchain.')
   })
 
   app.post('/addPeer', ( req, res ) => {

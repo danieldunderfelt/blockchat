@@ -13,12 +13,12 @@ export default function( blockchain, database ) {
 
   const queryChainLengthMsg = () => ({ 'type': socketMessages.QUERY_LATEST })
   const queryAllMsg         = () => ({ 'type': socketMessages.QUERY_ALL })
-  const responseChainMsg    = () => ({
-    'type': socketMessages.RESPONSE_BLOCKCHAIN, 'data': JSON.stringify(blockchain.getBlockchain())
+  const responseChainMsg    = async () => ({
+    'type': socketMessages.RESPONSE_BLOCKCHAIN, 'data': JSON.stringify(await blockchain.getBlockchain())
   })
-  const responseLatestMsg   = () => ({
+  const responseLatestMsg   = async () => ({
     'type': socketMessages.RESPONSE_BLOCKCHAIN,
-    'data': JSON.stringify([ blockchain.getLatestBlock() ])
+    'data': JSON.stringify([ await blockchain.getLatestBlock() ])
   })
 
   /* Methods */
@@ -35,42 +35,42 @@ export default function( blockchain, database ) {
 
   function handleConnectionMessage( ws ) {
 
-    return data => {
+    return async data => {
       const message = JSON.parse(data)
 
       switch( message.type ) {
         case socketMessages.QUERY_LATEST:
-          send(ws, responseLatestMsg())
+          send(ws, await responseLatestMsg())
           break
         case socketMessages.QUERY_ALL:
-          send(ws, responseChainMsg())
+          send(ws, await responseChainMsg())
           break
         case socketMessages.RESPONSE_BLOCKCHAIN:
-          const result = handleBlockchainResponse(message, ws)
+          await handleBlockchainResponse(message, ws)
           break
       }
     }
   }
 
-  function handleBlockchainResponse( message, ws ) {
+  async function handleBlockchainResponse( message, ws ) {
     const newChain            = JSON.parse(message.data).sort(( b1, b2 ) => (b1.index - b2.index))
     const latestBlockReceived = newChain[ newChain.length - 1 ]
-    const latestBlockHeld     = blockchain.getLatestBlock()
+    const latestBlockHeld     = await blockchain.getLatestBlock()
 
     if( latestBlockReceived.index > latestBlockHeld.index ) {
       if( latestBlockHeld.hash === latestBlockReceived.previousHash ) {
         // Append received block to our chain
-        blockchain.addBlock(latestBlockReceived)
+        await blockchain.addBlock(latestBlockReceived)
       } else if( newChain.length === 1 ) {
         // We need to get the whole chain to proceed
         broadcast(queryAllMsg())
       } else {
         // Replace with longer chain
-        blockchain.replace(newChain)
+        await blockchain.replace(newChain)
       }
     } else if( latestBlockReceived.index < latestBlockHeld.index ) {
       // New chain is shorter than our chain. Send our chain back.
-      send(ws, responseChainMsg())
+      send(ws, await responseChainMsg())
     } else {
       console.log('Chain synced, nothing to update.')
     }
@@ -79,6 +79,8 @@ export default function( blockchain, database ) {
   function closeConnection( ws ) {
     console.log('connection failed to peer: ' + ws.url)
     sockets.splice(sockets.indexOf(ws), 1)
+    const peer = ws._socket.remoteAddress + ':' + ws._socket.remotePort
+    database.setOption('peers', [ peer ], true)
   }
 
   function send( ws, message ) {
@@ -99,7 +101,8 @@ export default function( blockchain, database ) {
 
       ws.on('open', () => {
         initConnection(ws)
-        database.add('Node', { p2puri: peer })
+        // Save the peer for the future
+        database.setOption('peers', [ peer ])
       })
       ws.on('error', () => {
         console.log('connection failed')
@@ -113,12 +116,12 @@ export default function( blockchain, database ) {
 
   /* Blockchain events */
 
-  blockchain.events.on(blockchainEvents.REPLACE, () => {
-    broadcast(responseLatestMsg())
+  blockchain.events.on(blockchainEvents.REPLACE, async () => {
+    broadcast(await responseLatestMsg())
   })
 
-  blockchain.events.on(blockchainEvents.ADD, () => {
-    broadcast(responseLatestMsg())
+  blockchain.events.on(blockchainEvents.ADD, async () => {
+    broadcast(await responseLatestMsg())
   })
 
   /* All done */

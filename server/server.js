@@ -7,14 +7,15 @@ import constants from './lib/constants'
 
 const { initialPeers } = constants
 
-createDatabase(database => {
-  const blockchain = createBlockchain(database)
+createDatabase(async database => {
+  const blockchain = await createBlockchain(database)
   const p2p        = initP2P(blockchain, database)
   const node       = createNode(blockchain)
   const http       = initHttp(blockchain, p2p, node)
 
-  //const peers = database.get('Node').map(nodeObj => nodeObj.p2puri).concat(initialPeers)
-  p2p.connectToPeers(initialPeers)
+  let savedPeers = await database.getOption('peers')
+  savedPeers = Array.isArray(savedPeers) && savedPeers.length > 0 ? savedPeers : []
+  p2p.connectToPeers(savedPeers.concat(initialPeers))
 
   console.log('Blockchat node running.')
 })

@@ -34,14 +34,14 @@ export default function( blockchain ) {
     transactions = []
   }
 
-  function createMessage( messageData ) {
+  async function createMessage( messageData ) {
     const blockMessage = message(messageData)
 
     if( !validate(messageSchema, blockMessage) ) {
       return false
     }
 
-    const previousBlock = blockchain.getLatestBlock()
+    const previousBlock = await blockchain.getLatestBlock()
 
     createTransaction({
       from: 'network',
@@ -57,7 +57,7 @@ export default function( blockchain ) {
     clearTransactions()
 
     const newBlock = createNextBlock(previousBlock, data)
-    blockchain.addBlock(newBlock)
+    await blockchain.addBlock(newBlock)
 
     return newBlock
   }
